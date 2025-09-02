@@ -8,8 +8,8 @@ function base642buf(base64) {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
-// --- Hardcoded AES-GCM Key (32 byte) ---
-const hardcodedKey = new TextEncoder().encode("1234567890abcdef"); 
+// --- Hardcoded AES-GCM Key (16 byte untuk AES-128) ---
+const hardcodedKey = new TextEncoder().encode("1234567890abcdef");
 
 async function getKey() {
   return await window.crypto.subtle.importKey(
@@ -54,11 +54,12 @@ async function decryptData(encrypted) {
 export default function App() {
   const [url, setUrl] = useState("");
   const [decrypted, setDecrypted] = useState(null);
+  const [iframeUrl, setIframeUrl] = useState("");
 
   const handleEncrypt = async () => {
     const payload = {
       username: "imam",
-      password: "imam1234",
+      password: "Savoir#2020",
       password_keycloak: "imam1234",
     };
 
@@ -66,7 +67,7 @@ export default function App() {
     const tokenStr = JSON.stringify(encrypted);
     const tokenB64 = btoa(tokenStr);
 
-    const finalUrl = `https://arjuna-kms.netlify.app/callback?token=${encodeURIComponent(
+    const finalUrl = `http://localhost:3000/arjuna-web-callback?token=${encodeURIComponent(
       tokenB64
     )}`;
     setUrl(finalUrl);
@@ -80,22 +81,52 @@ export default function App() {
     setDecrypted(data);
   };
 
+  const handleOpenUrl = () => {
+    if (url) {
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleOpenIframe = () => {
+    if (url) {
+      setIframeUrl(url);
+    }
+  };
+
   return (
     <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h2>AES-GCM Encrypt/Decrypt Demo</h2>
+      <h2>ARJUNA WEB SAMPLE LOGIN DEMO</h2>
 
       <button onClick={handleEncrypt}>Generate Token</button>
       {url && (
         <div style={{ marginTop: 10 }}>
           <p style={{ wordBreak: "break-all" }}>{url}</p>
+
           <button onClick={handleDecrypt}>Test Decrypt</button>
+          <button onClick={handleOpenUrl} style={{ marginLeft: 8 }}>
+            Open URL
+          </button>
+          <button onClick={handleOpenIframe} style={{ marginLeft: 8 }}>
+            Open URL in Iframe
+          </button>
         </div>
       )}
 
       {decrypted && (
         <pre style={{ background: "#f0f0f0", padding: 10, marginTop: 10 }}>
-{JSON.stringify(decrypted, null, 2)}
+          {JSON.stringify(decrypted, null, 2)}
         </pre>
+      )}
+
+      {iframeUrl && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Iframe Preview</h3>
+          <iframe
+            src={iframeUrl}
+            title="callback iframe"
+            style={{ width: "100%", height: "400px", border: "1px solid #ccc" }}
+          />
+        </div>
       )}
     </div>
   );
