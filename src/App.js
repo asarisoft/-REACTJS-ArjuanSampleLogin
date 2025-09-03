@@ -50,9 +50,14 @@ export default function App() {
   const [username, setUsername] = useState("imam");
   const [password, setPassword] = useState("Savoir#2020");
   const [passwordKeycloak, setPasswordKeycloak] = useState("imam1234");
+  // const [callbackBase, setCallbackBase] = useState(
+  //   "http://localhost:3000/arjuna-web-callback"
+  // );
+
   const [callbackBase, setCallbackBase] = useState(
-    "http://localhost:3000/arjuna-web-callback"
+    "https://bawanaapp.netlify.app/arjuna-web-callback"
   );
+
 
   const [url, setUrl] = useState("");
   const [decrypted, setDecrypted] = useState(null);
@@ -91,9 +96,9 @@ export default function App() {
       {
         label: "USER 2",
         data: {
-          username: "demo_user",
+          username: "03524",
           password: "Password!234",
-          passwordKeycloak: "demo1234",
+          passwordKeycloak: "Password!234",
         },
       },
     ],
