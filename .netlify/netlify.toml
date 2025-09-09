@@ -1,6 +1,6 @@
+headersOrigin = "config"
+redirectsOrigin = "config"
 plugins = []
-headers = []
-redirects = []
 
 [functions]
 
@@ -8,8 +8,8 @@ redirects = []
 
 [build]
 publish = "/Users/mbm1pro/ReactJs/demoarjuna/build"
-publishOrigin = "ui"
-commandOrigin = "ui"
+publishOrigin = "config"
+commandOrigin = "config"
 command = "npm run build"
 
 [build.environment]
@@ -25,3 +25,23 @@ command = "npm run build"
 [build.processing.js]
 
 [build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "SAMEORIGIN"
+X-Content-Type-Options = "nosniff"
+Content-Security-Policy = "frame-ancestors 'none'"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

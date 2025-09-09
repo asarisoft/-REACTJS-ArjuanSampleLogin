@@ -75,7 +75,11 @@ export default function App() {
 
       // contoh, kalau iframe kirim event auto_login_done
       if (evt.data?.event === "auto_login_done" && evt.data?.url) {
-        window.location.href = evt.data.url;
+        if (evt.data?.target === "_blank") {
+          window.open(evt.data.url, "_blank");
+        } else {
+          window.location.href = evt.data.url;
+        }
       }
     };
     window.addEventListener("message", handler);
