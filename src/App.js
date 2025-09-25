@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 // --- Helper Base64 ---
 function buf2base64(buffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
+
 function base642buf(base64) {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
-// --- Hardcoded AES-GCM Key (16 byte untuk AES-128) ---
+// --- Hardcoded AES-GCM Key ---
 const hardcodedKey = new TextEncoder().encode("1234567890abcdef");
 
 async function getKey() {
@@ -25,85 +26,48 @@ async function encryptData(data) {
   const key = await getKey();
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(JSON.stringify(data));
-  const ciphertext = await window.crypto.subtle.encrypt(
+  const encryptedBuffer = await window.crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
     encoded
   );
-  return { iv: buf2base64(iv), ct: buf2base64(ciphertext) };
+  return {
+    iv: buf2base64(iv),
+    data: buf2base64(encryptedBuffer),
+  };
 }
 
 async function decryptData(encrypted) {
   const key = await getKey();
   const iv = base642buf(encrypted.iv);
-  const ciphertext = base642buf(encrypted.ct);
+  const encryptedData = base642buf(encrypted.data);
   const decrypted = await window.crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
     key,
-    ciphertext
+    encryptedData
   );
   return JSON.parse(new TextDecoder().decode(decrypted));
 }
 
 export default function App() {
-  // --- Default pakai USER 1 ---
-  const [username, setUsername] = useState("imam");
-  const [password, setPassword] = useState("Savoir#2020");
+  // const targetUrl = "https://bawanaapp.netlify.app/arjuna-web-callback"
+  const targetUrl = "http://localhost:3000/arjuna-web-callback"
+  const [username, setUsername] = useState("tester1");
+  const [password, setPassword] = useState("Password!234");
   const [passwordKeycloak, setPasswordKeycloak] = useState("imam1234");
-  // const [callbackBase, setCallbackBase] = useState(
-  //   "http://localhost:3000/arjuna-web-callback"
-  // );
-
-  const [callbackBase, setCallbackBase] = useState(
-    "https://bawanaapp.netlify.app/arjuna-web-callback"
-  );
-
-
   const [url, setUrl] = useState("");
   const [decrypted, setDecrypted] = useState(null);
-
   const [iframeUrlA, setIframeUrlA] = useState("");
-  const [iframeUrlB, setIframeUrlB] = useState("");
 
-  const [lastMessage, setLastMessage] = useState(null);
-
-  // --- Listener umum postMessage ---
-  useEffect(() => {
-    const handler = (evt) => {
-      console.log("📩 Message diterima dari iframe:", evt.data);
-      setLastMessage(evt.data);
-
-      // contoh, kalau iframe kirim event auto_login_done
-      if (evt.data?.event === "auto_login_done" && evt.data?.url) {
-        if (evt.data?.target === "_blank") {
-          window.open(evt.data.url, "_blank");
-        } else {
-          window.location.href = evt.data.url;
-        }
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, []);
-
-  // --- Saran akun demo ---
   const suggestions = useMemo(
     () => [
       {
         label: "USER 1",
-        data: {
-          username: "imam",
-          password: "Savoir#2020",
-          passwordKeycloak: "imam1234",
-        },
+        data: { username: "tester1", password: "Password!234", passwordKeycloak: "Password!234" },
       },
       {
         label: "USER 2",
-        data: {
-          username: "03524",
-          password: "Password!234",
-          passwordKeycloak: "Password!234",
-        },
+        data: { username: "tester2", password: "Password!234", passwordKeycloak: "Password!234" },
       },
     ],
     []
@@ -115,23 +79,27 @@ export default function App() {
     setPasswordKeycloak(s.passwordKeycloak);
   };
 
-  // --- Generate token ---
   const handleEncrypt = async () => {
-    const payload = {
-      username,
-      password,
-      password_keycloak: passwordKeycloak,
-    };
+    const expired_second = 2 * 60
+    const expired_at = new Date(Date.now() + expired_second * 1000).toISOString();
+    const payload = { username, password, password_keycloak: passwordKeycloak, expired_at};
     const encrypted = await encryptData(payload);
     const tokenStr = JSON.stringify(encrypted);
     const tokenB64 = btoa(tokenStr);
-
-    const finalUrl = `${callbackBase}?token=${encodeURIComponent(tokenB64)}`;
-    setUrl(finalUrl);
+    setUrl(`${targetUrl}?token=${encodeURIComponent(tokenB64)}`);
     setDecrypted(null);
   };
 
-  // --- Decrypt token ---
+  // from datetime import datetime, timezone
+  // # ubah string ISO UTC jadi datetime object
+  // expired_dt = datetime.fromisoformat(expired_at.replace("Z", "+00:00"))
+  // # waktu sekarang UTC
+  // now = datetime.now(timezone.utc)
+  // if now > expired_dt:
+  //     print("Token sudah expired")
+  // else:
+  //     print("Token masih berlaku")
+
   const handleDecrypt = async () => {
     if (!url) return;
     const tokenParam = url.split("token=")[1];
@@ -142,123 +110,60 @@ export default function App() {
     setDecrypted(data);
   };
 
-  // --- Open di tab baru ---
-  const handleOpenUrl = () => {
-    if (url) window.open(url, "_self");
-  };
-
-  // --- Open iframe normal ---
-  const handleOpenIframeA = () => {
-    if (url) setIframeUrlA(url);
-  };
+  const handleOpenUrl = () => { if (url) window.open(url, "_self"); };
+  const handleOpenIframeA = () => { if (url) setIframeUrlA(url); };
+  
+  const containerStyle = { maxWidth: 900, margin: "20px auto", fontFamily: "Inter, sans-serif" };
+  const sectionStyle = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 3px 6px rgba(0,0,0,0.1)", marginBottom: 20 };
+  const inputStyle = { width: "100%", padding: 10, borderRadius: 6, border: "1px solid #ccc", marginBottom: 10 };
+  const buttonStyle = { padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "#4f46e5", color: "#fff", marginRight: 10, marginTop: 10 };
+  const secondaryButton = { ...buttonStyle, background: "#6b7280" };
+  const labelStyle = { width: "100%", fontSize: '12px', marginTop: '10px', marginBottom: '4px'};
 
   return (
-    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h2>ARJUNA WEB SAMPLE LOGIN</h2>
+    <div style={containerStyle}>
+      <h1 style={{ marginBottom: 20, color: "#111827" }}>ARJUNA WEB LOGIN DEMO</h1>
 
-      {/* --- Form Input --- */}
-      <div
-        style={{
-          display: "grid",
-          gap: 10,
-          gridTemplateColumns: "1fr 1fr",
-          marginBottom: 12,
-        }}
-      >
-        <div>
-          <label>Username</label>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="masukkan username"
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <div>
-          <label>Password Django</label>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="masukkan password"
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <div>
-          <label>Password (Keycloak)</label>
-          <input
-            value={passwordKeycloak}
-            onChange={(e) => setPasswordKeycloak(e.target.value)}
-            placeholder="masukkan password keycloak"
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <div>
-          <label>BAWANA URL</label>
-          <input
-            value={callbackBase}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="masukkan password"
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
+      {/* --- Form Section --- */}
+      <div style={sectionStyle}>
+        <h2 style={{ marginBottom: 15 }}>Form Input</h2>
+        <p style={labelStyle}>Username</p>
+        <input style={inputStyle} placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+        <p style={labelStyle}>Password Django</p>
+        <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)}  />
+        <p style={labelStyle}>Password KeyCloak</p>
+        <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)}  />
       </div>
 
-      {/* --- Saran --- */}
-      <div style={{ marginBottom: 16 }}>
-        <strong>Gunakan saran cepat:</strong>
-        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+      {/* --- Suggestions Section --- */}
+      <div style={sectionStyle}>
+        <h2 style={{ marginBottom: 10 }}>Saran Cepat</h2>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {suggestions.map((s, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleUseSuggestion(s.data)}
-              style={{ padding: 4 }}
-            >
+            <button key={idx} style={secondaryButton} onClick={() => handleUseSuggestion(s.data)}>
               {s.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* --- Actions --- */}
-      <div>
-        <button onClick={handleEncrypt}>1. Generate Token</button>
-        &nbsp;
-        <button onClick={handleDecrypt} disabled={!url}>
-          2. Test Decrypt Token (Algoritma → AES-GCM)
-        </button>
-
-        {url && (
-          <p style={{ wordBreak: "break-all", background: "#fafafa", padding: 8 }}>
-            {url}
-          </p>
-        )}
-        {decrypted && (
-          <pre style={{ background: "#f0f0f0", padding: 10, marginTop: 10 }}>
-            {JSON.stringify(decrypted, null, 2)}
-          </pre>
-        )}
-
-        <button onClick={handleOpenUrl} disabled={!url} style={{ padding: 4 }}>
-          3. OPEN BAWANA IN CURRENT TAB
-        </button>
-        &nbsp;&nbsp;
-        <button onClick={handleOpenIframeA} disabled={!url} style={{ padding: 4 }}>
-          4. OPEN BAWANA IN IFRAME
-        </button>
+      {/* --- Actions Section --- */}
+      <div style={sectionStyle}>
+        <h2 style={{ marginBottom: 15 }}>Actions</h2>
+        <button style={buttonStyle} onClick={handleEncrypt}>1. Generate Token</button>
+        <button style={buttonStyle} onClick={handleDecrypt} disabled={!url}>2. Test Decrypt Token</button>
+        <button style={buttonStyle} onClick={handleOpenUrl} disabled={!url}>3. Open In Tab</button>
+        <button style={buttonStyle} onClick={handleOpenIframeA} disabled={!url}>4. Open in Iframe</button>
+        {url && <p style={{ wordBreak: "break-all", marginTop: 10, background: "#f3f4f6", padding: 10, borderRadius: 6 }}>{url}</p>}
+        {decrypted && <pre style={{ background: "#f3f4f6", padding: 10, borderRadius: 6, marginTop: 10 }}>{JSON.stringify(decrypted, null, 2)}</pre>}
       </div>
 
-      {/* --- Iframes --- */}
-      <div style={{ marginTop: 20, flex: 1 }}>
-        <h3>IFRAME</h3>
-        <h5 style={{ color: 'blue' }}> INFO:  BUTTON LXP WILL FAILED X-Frame ORIGIN, </h5>
-        <h5 style={{ color: 'blue' }}> BUTTON LXP BACK TO ARJUNA WILL WORK</h5>
-        <iframe
-          src={iframeUrlA}
-          title="iframe-a"
-          style={{ width: "100%", height: 700, border: "1px solid #ccc" }}
-        />
+      {/* --- Iframe Section --- */}
+      <div style={sectionStyle}>
+        <h2 style={{ marginBottom: 10 }}>Iframe Preview</h2>
+        <h5 style={{ color: "#2563eb", marginBottom: 10 }}>INFO: BUTTON LXP MUNGKIN BLOCK X-Frame</h5>
+        <iframe src={iframeUrlA} title="iframe-a" style={{ width: "100%", height: 500, borderRadius: 10, border: "1px solid #ccc" }} />
       </div>
-
     </div>
   );
 }

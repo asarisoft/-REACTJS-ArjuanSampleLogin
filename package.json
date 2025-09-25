@@ -13,10 +13,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "start": "cross-env PORT=3001 react-scripts start"
   },
   "eslintConfig": {
     "extends": [
@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "ajv": "^6.12.6",
-    "ajv-keywords": "^3.5.2"
+    "ajv-keywords": "^3.5.2",
+    "cross-env": "^10.0.0"
   }
 }
