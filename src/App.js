@@ -31,7 +31,7 @@ async function encryptData(data) {
     key,
     encoded
   );
-  const object =  {
+  const object = {
     iv: buf2base64(iv),
     data: buf2base64(encryptedBuffer),
   };
@@ -54,7 +54,12 @@ async function decryptData(encrypted) {
 
 export default function App() {
   // const targetUrl = "https://bawanaapp.netlify.app/arjuna-web-callback"
-  const targetUrl = "http://localhost:3000/arjuna-web-callback"
+
+  // const targetUrl = "https://arjuna-kms.netlify.app"
+  const targetUrl = "https://arjuna-lms-stg.netlify.app"
+
+  // const targetUrl = "http://localhost:3000"
+  // const targetUrl = "http://localhost:3001"
   const [username, setUsername] = useState("tester1");
   const [password, setPassword] = useState("Password!234");
   const [passwordKeycloak, setPasswordKeycloak] = useState("Password!234");
@@ -63,6 +68,7 @@ export default function App() {
   const [iframeUrlA, setIframeUrlA] = useState("");
   const [expired, setExpired] = useState(1);
   const [tokenType, setTokenType] = useState("arjuna_web");
+  const [targetDomain, setTargetDomain] = useState(targetUrl);
 
   const suggestions = useMemo(
     () => [
@@ -87,10 +93,12 @@ export default function App() {
   const handleEncrypt = async () => {
     const expired_second = expired * 60
     const expired_at = new Date(Date.now() + expired_second * 1000).toISOString();
-    const payload = { username, password, password_keycloak: passwordKeycloak, 
-      expired_at, token_type: tokenType};
+    const payload = {
+      username, password, password_keycloak: passwordKeycloak,
+      expired_at, token_type: tokenType
+    };
     const encrypted = await encryptData(payload);
-    setUrl(`${targetUrl}?token=${encodeURIComponent(encrypted)}`);
+    setUrl(`${targetDomain}/arjuna-callback?token=${encodeURIComponent(encrypted)}`);
     setDecrypted(null);
   };
 
@@ -116,13 +124,13 @@ export default function App() {
 
   const handleOpenUrl = () => { if (url) window.open(url, "_blank"); };
   const handleOpenIframeA = () => { if (url) setIframeUrlA(url); };
-  
+
   const containerStyle = { maxWidth: 900, margin: "20px auto", fontFamily: "Inter, sans-serif" };
   const sectionStyle = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 3px 6px rgba(0,0,0,0.1)", marginBottom: 20 };
   const inputStyle = { width: "100%", padding: 10, borderRadius: 6, border: "1px solid #ccc", marginBottom: 10 };
   const buttonStyle = { padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "#4f46e5", color: "#fff", marginRight: 10, marginTop: 10 };
   const secondaryButton = { ...buttonStyle, background: "#6b7280" };
-  const labelStyle = { width: "100%", fontSize: '12px', marginTop: '10px', marginBottom: '4px'};
+  const labelStyle = { width: "100%", fontSize: '12px', marginTop: '10px', marginBottom: '4px' };
 
   return (
     <div style={containerStyle}>
@@ -134,9 +142,13 @@ export default function App() {
         <p style={labelStyle}>Username</p>
         <input style={inputStyle} placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
         <p style={labelStyle}>Password Django</p>
-        <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)}  />
+        <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)} />
         <p style={labelStyle}>Password KeyCloak</p>
-        <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)}  />
+        <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)} />
+        <p style={labelStyle}>DOMAIN (LOG+ / KMS) </p>
+        <input style={inputStyle} type="text" placeholder="Token Type" value={targetDomain}
+          onChange={e => setTargetDomain(e.target.value)} />
+
         <p style={labelStyle}>Expired (minute)</p>
         <input style={inputStyle} type="number" placeholder="Expired" value={expired} onChange={e => setExpired(e.target.value)} />
         <p style={labelStyle}>Token Type</p>
