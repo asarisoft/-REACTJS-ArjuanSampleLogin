@@ -31,10 +31,13 @@ async function encryptData(data) {
     key,
     encoded
   );
-  return {
+  const object =  {
     iv: buf2base64(iv),
     data: buf2base64(encryptedBuffer),
   };
+  const tokenStr = JSON.stringify(object);
+  const tokenB64 = btoa(tokenStr);
+  return tokenB64;
 }
 
 async function decryptData(encrypted) {
@@ -54,10 +57,12 @@ export default function App() {
   const targetUrl = "http://localhost:3000/arjuna-web-callback"
   const [username, setUsername] = useState("tester1");
   const [password, setPassword] = useState("Password!234");
-  const [passwordKeycloak, setPasswordKeycloak] = useState("imam1234");
+  const [passwordKeycloak, setPasswordKeycloak] = useState("Password!234");
   const [url, setUrl] = useState("");
   const [decrypted, setDecrypted] = useState(null);
   const [iframeUrlA, setIframeUrlA] = useState("");
+  const [expired, setExpired] = useState(1);
+  const [tokenType, setTokenType] = useState("arjuna_web");
 
   const suggestions = useMemo(
     () => [
@@ -80,13 +85,12 @@ export default function App() {
   };
 
   const handleEncrypt = async () => {
-    const expired_second = 2 * 60
+    const expired_second = expired * 60
     const expired_at = new Date(Date.now() + expired_second * 1000).toISOString();
-    const payload = { username, password, password_keycloak: passwordKeycloak, expired_at};
+    const payload = { username, password, password_keycloak: passwordKeycloak, 
+      expired_at, token_type: tokenType};
     const encrypted = await encryptData(payload);
-    const tokenStr = JSON.stringify(encrypted);
-    const tokenB64 = btoa(tokenStr);
-    setUrl(`${targetUrl}?token=${encodeURIComponent(tokenB64)}`);
+    setUrl(`${targetUrl}?token=${encodeURIComponent(encrypted)}`);
     setDecrypted(null);
   };
 
@@ -110,7 +114,7 @@ export default function App() {
     setDecrypted(data);
   };
 
-  const handleOpenUrl = () => { if (url) window.open(url, "_self"); };
+  const handleOpenUrl = () => { if (url) window.open(url, "_blank"); };
   const handleOpenIframeA = () => { if (url) setIframeUrlA(url); };
   
   const containerStyle = { maxWidth: 900, margin: "20px auto", fontFamily: "Inter, sans-serif" };
@@ -133,6 +137,10 @@ export default function App() {
         <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)}  />
         <p style={labelStyle}>Password KeyCloak</p>
         <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)}  />
+        <p style={labelStyle}>Expired (minute)</p>
+        <input style={inputStyle} type="number" placeholder="Expired" value={expired} onChange={e => setExpired(e.target.value)} />
+        <p style={labelStyle}>Token Type</p>
+        <input style={inputStyle} type="text" placeholder="Token Type" value={tokenType} />
       </div>
 
       {/* --- Suggestions Section --- */}
