@@ -53,22 +53,16 @@ async function decryptData(encrypted) {
 }
 
 export default function App() {
-  // const targetUrl = "https://bawanaapp.netlify.app/arjuna-web-callback"
-
-  // const targetUrl = "https://arjuna-kms.netlify.app"
-  const targetUrl = "https://arjuna-lms-stg.netlify.app"
-
-  // const targetUrl = "http://localhost:3000"
-  // const targetUrl = "http://localhost:3001"
+  const logURL = "https://arjuna-lms-stg.netlify.app"
+  const kmsURL = "https://arjuna-kms.netlify.app"
   const [username, setUsername] = useState("tester1");
   const [password, setPassword] = useState("Password!234");
   const [passwordKeycloak, setPasswordKeycloak] = useState("Password!234");
-  const [url, setUrl] = useState("");
   const [decrypted, setDecrypted] = useState(null);
   const [iframeUrlA, setIframeUrlA] = useState("");
   const [expired, setExpired] = useState(1);
   const [tokenType, setTokenType] = useState("arjuna_web");
-  const [targetDomain, setTargetDomain] = useState(targetUrl);
+  const [tokenParam, setToken] = useState("");
 
   const suggestions = useMemo(
     () => [
@@ -98,32 +92,25 @@ export default function App() {
       expired_at, token_type: tokenType
     };
     const encrypted = await encryptData(payload);
-    setUrl(`${targetDomain}/arjuna-callback?token=${encodeURIComponent(encrypted)}`);
+    setToken(`${encodeURIComponent(encrypted)}`);
     setDecrypted(null);
   };
 
-  // from datetime import datetime, timezone
-  // # ubah string ISO UTC jadi datetime object
-  // expired_dt = datetime.fromisoformat(expired_at.replace("Z", "+00:00"))
-  // # waktu sekarang UTC
-  // now = datetime.now(timezone.utc)
-  // if now > expired_dt:
-  //     print("Token sudah expired")
-  // else:
-  //     print("Token masih berlaku")
-
   const handleDecrypt = async () => {
-    if (!url) return;
-    const tokenParam = url.split("token=")[1];
-    if (!tokenParam) return;
+    console.log("dipanagil", tokenParam)
+    if (!tokenParam)  return;
     const tokenB64 = decodeURIComponent(tokenParam);
     const encrypted = JSON.parse(atob(tokenB64));
     const data = await decryptData(encrypted);
     setDecrypted(data);
   };
 
-  const handleOpenUrl = () => { if (url) window.open(url, "_blank"); };
-  const handleOpenIframeA = () => { if (url) setIframeUrlA(url); };
+  // const handleOpenUrl = () => { if (url) window.open(url, "_blank"); };
+
+  const handleOpenIframeA = (baseUrl) => { 
+    const urlToOpen = `${baseUrl}/?token=${tokenParam}`
+    setIframeUrlA(urlToOpen); 
+  };
 
   const containerStyle = { maxWidth: 900, margin: "20px auto", fontFamily: "Inter, sans-serif" };
   const sectionStyle = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 3px 6px rgba(0,0,0,0.1)", marginBottom: 20 };
@@ -145,10 +132,9 @@ export default function App() {
         <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)} />
         <p style={labelStyle}>Password KeyCloak</p>
         <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)} />
-        <p style={labelStyle}>DOMAIN (LOG+ / KMS) </p>
+        {/* <p style={labelStyle}>DOMAIN (LOG+ / KMS) </p>
         <input style={inputStyle} type="text" placeholder="Token Type" value={targetDomain}
-          onChange={e => setTargetDomain(e.target.value)} />
-
+          onChange={e => setTargetDomain(e.target.value)} /> */}
         <p style={labelStyle}>Expired (minute)</p>
         <input style={inputStyle} type="number" placeholder="Expired" value={expired} onChange={e => setExpired(e.target.value)} />
         <p style={labelStyle}>Token Type</p>
@@ -170,11 +156,13 @@ export default function App() {
       {/* --- Actions Section --- */}
       <div style={sectionStyle}>
         <h2 style={{ marginBottom: 15 }}>Actions</h2>
-        <button style={buttonStyle} onClick={handleEncrypt}>1. Generate Token</button>
-        <button style={buttonStyle} onClick={handleDecrypt} disabled={!url}>2. Test Decrypt Token</button>
-        <button style={buttonStyle} onClick={handleOpenUrl} disabled={!url}>3. Open In Tab</button>
-        <button style={buttonStyle} onClick={handleOpenIframeA} disabled={!url}>4. Open in Iframe</button>
-        {url && <p style={{ wordBreak: "break-all", marginTop: 10, background: "#f3f4f6", padding: 10, borderRadius: 6 }}>{url}</p>}
+        <button style={buttonStyle} onClick={()=>handleEncrypt()}>1. Generate Token</button>
+        <button style={buttonStyle} onClick={()=>handleDecrypt()} disabled={!tokenParam}>2. Decrypt Token</button>
+        <button style={buttonStyle} onClick={()=>handleOpenIframeA(logURL)} disabled={!tokenParam}>LOG+</button>
+        <button style={buttonStyle} onClick={()=>handleOpenIframeA(kmsURL)} disabled={!tokenParam}>LXP</button>
+        {/* <button style={buttonStyle} onClick={handleOpenUrl} disabled={!url}>3. Open In Tab</button>
+        <button style={buttonStyle} onClick={handleOpenIframeA} disabled={!url}>4. Open in Iframe</button> */}
+        {tokenParam && <p style={{ wordBreak: "break-all", marginTop: 10, background: "#f3f4f6", padding: 10, borderRadius: 6 }}>{tokenParam}</p>}
         {decrypted && <pre style={{ background: "#f3f4f6", padding: 10, borderRadius: 6, marginTop: 10 }}>{JSON.stringify(decrypted, null, 2)}</pre>}
       </div>
 
