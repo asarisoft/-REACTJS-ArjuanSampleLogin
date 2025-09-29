@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 // --- Helper Base64 ---
 function buf2base64(buffer) {
@@ -53,16 +53,17 @@ async function decryptData(encrypted) {
 }
 
 export default function App() {
-  const logURL = "https://arjuna-lms-stg.netlify.app"
-  const kmsURL = "https://arjuna-kms.netlify.app"
+  const logURL = "https://arjuna-lms-stg.netlify.app";
+  const kmsURL = "https://arjuna-stg.netlify.app";
+
   const [username, setUsername] = useState("tester1");
   const [password, setPassword] = useState("Password!234");
   const [passwordKeycloak, setPasswordKeycloak] = useState("Password!234");
   const [decrypted, setDecrypted] = useState(null);
-  const [iframeUrlA, setIframeUrlA] = useState("");
   const [expired, setExpired] = useState(1);
   const [tokenType, setTokenType] = useState("arjuna_web");
   const [tokenParam, setToken] = useState("");
+  const [iframeUrlA, setIframeUrlA] = useState("");
 
   const suggestions = useMemo(
     () => [
@@ -85,11 +86,14 @@ export default function App() {
   };
 
   const handleEncrypt = async () => {
-    const expired_second = expired * 60
+    const expired_second = expired * 60;
     const expired_at = new Date(Date.now() + expired_second * 1000).toISOString();
     const payload = {
-      username, password, password_keycloak: passwordKeycloak,
-      expired_at, token_type: tokenType
+      username,
+      password,
+      password_keycloak: passwordKeycloak,
+      expired_at,
+      token_type: tokenType,
     };
     const encrypted = await encryptData(payload);
     setToken(`${encodeURIComponent(encrypted)}`);
@@ -97,27 +101,42 @@ export default function App() {
   };
 
   const handleDecrypt = async () => {
-    console.log("dipanagil", tokenParam)
-    if (!tokenParam)  return;
+    if (!tokenParam) return;
     const tokenB64 = decodeURIComponent(tokenParam);
     const encrypted = JSON.parse(atob(tokenB64));
     const data = await decryptData(encrypted);
     setDecrypted(data);
   };
 
-  // const handleOpenUrl = () => { if (url) window.open(url, "_blank"); };
-
-  const handleOpenIframeA = (baseUrl) => { 
-    const urlToOpen = `${baseUrl}/?token=${tokenParam}`
-    setIframeUrlA(urlToOpen); 
+  const handleOpenIframeA = (baseUrl) => {
+    const urlToOpen = `${baseUrl}/arjuna-callback/?token=${tokenParam}`;
+    console.log("urlToOpen", urlToOpen);
+    setIframeUrlA(urlToOpen);
   };
+
+  // --- LISTENER POSTMESSAGE ---
+  useEffect(() => {
+    const handleMessage = (event) => {
+      console.log("Message dari iframe:", event);
+
+      if (event.data?.event === "auto_login_done") {
+        // ✅ Open URL di current tab
+        window.location.href = event.data.url;
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, []);
 
   const containerStyle = { maxWidth: 900, margin: "20px auto", fontFamily: "Inter, sans-serif" };
   const sectionStyle = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 3px 6px rgba(0,0,0,0.1)", marginBottom: 20 };
   const inputStyle = { width: "100%", padding: 10, borderRadius: 6, border: "1px solid #ccc", marginBottom: 10 };
   const buttonStyle = { padding: "10px 16px", borderRadius: 6, border: "none", cursor: "pointer", background: "#4f46e5", color: "#fff", marginRight: 10, marginTop: 10 };
   const secondaryButton = { ...buttonStyle, background: "#6b7280" };
-  const labelStyle = { width: "100%", fontSize: '12px', marginTop: '10px', marginBottom: '4px' };
+  const labelStyle = { width: "100%", fontSize: "12px", marginTop: "10px", marginBottom: "4px" };
 
   return (
     <div style={containerStyle}>
@@ -127,18 +146,15 @@ export default function App() {
       <div style={sectionStyle}>
         <h2 style={{ marginBottom: 15 }}>Form Input</h2>
         <p style={labelStyle}>Username</p>
-        <input style={inputStyle} placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+        <input style={inputStyle} placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
         <p style={labelStyle}>Password Django</p>
-        <input style={inputStyle} placeholder="Password Django" value={password} onChange={e => setPassword(e.target.value)} />
+        <input style={inputStyle} placeholder="Password Django" value={password} onChange={(e) => setPassword(e.target.value)} />
         <p style={labelStyle}>Password KeyCloak</p>
-        <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={e => setPasswordKeycloak(e.target.value)} />
-        {/* <p style={labelStyle}>DOMAIN (LOG+ / KMS) </p>
-        <input style={inputStyle} type="text" placeholder="Token Type" value={targetDomain}
-          onChange={e => setTargetDomain(e.target.value)} /> */}
+        <input style={inputStyle} placeholder="Password Keycloak" value={passwordKeycloak} onChange={(e) => setPasswordKeycloak(e.target.value)} />
         <p style={labelStyle}>Expired (minute)</p>
-        <input style={inputStyle} type="number" placeholder="Expired" value={expired} onChange={e => setExpired(e.target.value)} />
+        <input style={inputStyle} type="number" placeholder="Expired" value={expired} onChange={(e) => setExpired(e.target.value)} />
         <p style={labelStyle}>Token Type</p>
-        <input style={inputStyle} type="text" placeholder="Token Type" value={tokenType} />
+        <input style={inputStyle} type="text" placeholder="Token Type" value={tokenType} readOnly />
       </div>
 
       {/* --- Suggestions Section --- */}
@@ -156,21 +172,30 @@ export default function App() {
       {/* --- Actions Section --- */}
       <div style={sectionStyle}>
         <h2 style={{ marginBottom: 15 }}>Actions</h2>
-        <button style={buttonStyle} onClick={()=>handleEncrypt()}>1. Generate Token</button>
-        <button style={buttonStyle} onClick={()=>handleDecrypt()} disabled={!tokenParam}>2. Decrypt Token</button>
-        <button style={buttonStyle} onClick={()=>handleOpenIframeA(logURL)} disabled={!tokenParam}>LOG+</button>
-        <button style={buttonStyle} onClick={()=>handleOpenIframeA(kmsURL)} disabled={!tokenParam}>LXP</button>
-        {/* <button style={buttonStyle} onClick={handleOpenUrl} disabled={!url}>3. Open In Tab</button>
-        <button style={buttonStyle} onClick={handleOpenIframeA} disabled={!url}>4. Open in Iframe</button> */}
-        {tokenParam && <p style={{ wordBreak: "break-all", marginTop: 10, background: "#f3f4f6", padding: 10, borderRadius: 6 }}>{tokenParam}</p>}
-        {decrypted && <pre style={{ background: "#f3f4f6", padding: 10, borderRadius: 6, marginTop: 10 }}>{JSON.stringify(decrypted, null, 2)}</pre>}
+        <button style={buttonStyle} onClick={handleEncrypt}>1. Generate Token</button>
+        <button style={buttonStyle} onClick={handleDecrypt} disabled={!tokenParam}>2. Decrypt Token</button>
+        <button style={buttonStyle} onClick={() => handleOpenIframeA(logURL)} disabled={!tokenParam}>LOG+</button>
+        <button style={buttonStyle} onClick={() => handleOpenIframeA(kmsURL)} disabled={!tokenParam}>LXP</button>
+        {tokenParam && (
+          <p style={{ wordBreak: "break-all", marginTop: 10, background: "#f3f4f6", padding: 10, borderRadius: 6 }}>
+            {tokenParam}
+          </p>
+        )}
+        {decrypted && (
+          <pre style={{ background: "#f3f4f6", padding: 10, borderRadius: 6, marginTop: 10 }}>
+            {JSON.stringify(decrypted, null, 2)}
+          </pre>
+        )}
       </div>
 
       {/* --- Iframe Section --- */}
       <div style={sectionStyle}>
         <h2 style={{ marginBottom: 10 }}>Iframe Preview</h2>
-        <h5 style={{ color: "#2563eb", marginBottom: 10 }}>INFO: BUTTON LXP MUNGKIN BLOCK X-Frame</h5>
-        <iframe src={iframeUrlA} title="iframe-a" style={{ width: "100%", height: 500, borderRadius: 10, border: "1px solid #ccc" }} />
+        <iframe
+          src={iframeUrlA}
+          title="iframe a"
+          style={{ width: "100%", height: 500, borderRadius: 10, border: "1px solid #ccc" }}
+        />
       </div>
     </div>
   );
